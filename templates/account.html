@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Account — Insighta Labs{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Account</h1>
+    <p>Your account information</p>
+</div>
+
+<div id="account-container">
+    <div class="loading">Loading...</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadAccount() {
+    const container = document.getElementById("account-container");
+
+    try {
+        const response = await fetch("/api/whoami");
+        const data = await response.json();
+
+        if (response.status === 401) {
+            window.location.href = "/login";
+            return;
+        }
+
+        const user = data.data;
+
+        container.innerHTML = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+
+                <!-- Profile Card -->
+                <div class="card">
+                    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+                        <img
+                            src="${user.avatar_url}"
+                            alt="${user.username}"
+                            style="width: 64px; height: 64px; border-radius: 50%;"
+                        />
+                        <div>
+                            <h2 style="font-size: 20px;">@${user.username}</h2>
+                            <span class="badge badge-${user.role}">
+                                ${user.role}
+                            </span>
+                        </div>
+                    </div>
+
+                    <table style="width: 100%;">
+                        <tbody>
+                            ${renderRow("Email", user.email || "—")}
+                            ${renderRow("Role", user.role)}
+                            ${renderRow("Member Since", new Date(user.created_at).toLocaleDateString())}
+                            ${renderRow("Last Login", new Date(user.last_login_at).toLocaleString())}
+                            ${renderRow("Status", user.is_active
+                                ? '<span style="color: #4ade80;">Active</span>'
+                                : '<span style="color: #ef4444;">Inactive</span>'
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Actions Card -->
+                <div class="card">
+                    <h2 style="font-size: 16px; color: #94a3b8; margin-bottom: 16px;">
+                        Actions
+                    </h2>
+
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <a href="/auth/logout" class="btn btn-danger">
+                            Logout
+                        </a>
+                    </div>
+
+                    <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #2d3148;">
+                        <h3 style="font-size: 14px; color: #94a3b8; margin-bottom: 8px;">
+                            Permissions
+                        </h3>
+                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px;">
+                            ${renderPermission("View profiles", true)}
+                            ${renderPermission("Search profiles", true)}
+                            ${renderPermission("Export profiles", true)}
+                            ${renderPermission("Create profiles", user.role === "admin")}
+                            ${renderPermission("Delete profiles", user.role === "admin")}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        `;
+
+    } catch (error) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>Failed to load account</h3>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function renderRow(label, value) {
+    return `
+        <tr>
+            <td style="color: #94a3b8; font-size: 13px; padding: 10px 0; width: 40%;">
+                ${label}
+            </td>
+            <td style="font-size: 14px; padding: 10px 0;">
+                ${value}
+            </td>
+        </tr>
+    `;
+}
+
+function renderPermission(label, allowed) {
+    return `
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="color: ${allowed ? '#4ade80' : '#ef4444'};">
+                ${allowed ? '✓' : '✗'}
+            </span>
+            <span style="color: ${allowed ? '#e2e8f0' : '#94a3b8'};">
+                ${label}
+            </span>
+        </div>
+    `;
+}
+
+loadAccount();
+</script>
+{% endblock %}

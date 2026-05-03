@@ -1,0 +1,15 @@
+#!/usr/bin/bash
+
+touch static/css/style.css
+touch static/js/app.js
+touch templates/base.html
+touch templates/login.html
+touch templates/dashboard.html
+touch templates/profiles.html
+touch templates/profile_detail.html
+touch templates/search.html
+touch templates/account.html
+touch app.py
+touch .env
+touch .env.example
+touch requirements.txt

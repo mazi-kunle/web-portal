@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Profiles — Insighta Labs{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Profiles</h1>
+    <p>Browse and filter all profiles</p>
+</div>
+
+<!-- Filters -->
+<div class="filters">
+    <select class="filter-input" id="filter-gender">
+        <option value="">All Genders</option>
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+    </select>
+
+    <input
+        type="text"
+        class="filter-input"
+        id="filter-country"
+        placeholder="Country code e.g NG"
+    />
+
+    <select class="filter-input" id="filter-age-group">
+        <option value="">All Age Groups</option>
+        <option value="child">Child</option>
+        <option value="teenager">Teenager</option>
+        <option value="adult">Adult</option>
+        <option value="senior">Senior</option>
+    </select>
+
+    <input
+        type="number"
+        class="filter-input"
+        id="filter-min-age"
+        placeholder="Min age"
+        style="width: 100px"
+    />
+
+    <input
+        type="number"
+        class="filter-input"
+        id="filter-max-age"
+        placeholder="Max age"
+        style="width: 100px"
+    />
+
+    <select class="filter-input" id="filter-sort">
+        <option value="">Sort by</option>
+        <option value="age">Age</option>
+        <option value="name">Name</option>
+        <option value="created_at">Created At</option>
+    </select>
+
+    <select class="filter-input" id="filter-order">
+        <option value="asc">Ascending</option>
+        <option value="desc">Descending</option>
+    </select>
+
+    <button class="btn btn-primary" onclick="applyFilters()">Apply</button>
+    <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+    <button class="btn btn-secondary" onclick="exportCSV()">Export CSV</button>
+</div>
+
+<!-- Profiles Table -->
+<div class="table-container">
+    <div id="profiles-container">
+        <div class="loading">Loading...</div>
+    </div>
+</div>
+
+<!-- Pagination -->
+<div class="pagination" id="pagination"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPage = 1;
+let currentFilters = {};
+
+async function loadProfiles(page = 1, filters = {}) {
+    const container = document.getElementById("profiles-container");
+    container.innerHTML = '<div class="loading">Loading...</div>';
+
+    // Build query string
+    const params = new URLSearchParams({
+        page,
+        limit: 10,
+        ...filters
+    });
+
+    // Remove empty params
+    for (const [key, value] of [...params.entries()]) {
+        if (!value) params.delete(key);
+    }
+
+    try {
+        const response = await fetch(`/api/profiles?${params}`);
+        const data = await response.json();
+
+        if (response.status === 401) {
+            window.location.href = "/login";
+            return;
+        }
+
+        if (!data.data || data.data.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <h3>No profiles found</h3>
+                    <p>Try adjusting your filters</p>
+                </div>
+            `;
+            document.getElementById("pagination").innerHTML = "";
+            return;
+        }
+
+        // Render table
+        container.innerHTML = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Gender</th>
+                        <th>Age</th>
+                        <th>Age Group</th>
+                        <th>Country</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.data.map(profile => `
+                        <tr onclick="window.location.href='/profiles/${profile.id}'">
+                            <td>${profile.name}</td>
+                            <td>
+                                <span class="badge badge-${profile.gender}">
+                                    ${profile.gender || '—'}
+                                </span>
+                            </td>
+                            <td>${profile.age || '—'}</td>
+                            <td>${profile.age_group || '—'}</td>
+                            <td>${profile.country_id || '—'}</td>
+                            <td>${new Date(profile.created_at).toLocaleDateString()}</td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+        `;
+
+        // Render pagination
+        renderPagination(data.page, data.total_pages, data.total);
+
+    } catch (error) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>Failed to load profiles</h3>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function renderPagination(page, totalPages, total) {
+    const container = document.getElementById("pagination");
+
+    container.innerHTML = `
+        <button
+            onclick="changePage(${page - 1})"
+            ${page <= 1 ? "disabled" : ""}
+        >
+            Previous
+        </button>
+
+        <span class="page-info">
+            Page ${page} of ${totalPages} (${total} total)
+        </span>
+
+        <button
+            onclick="changePage(${page + 1})"
+            ${page >= totalPages ? "disabled" : ""}
+        >
+            Next
+        </button>
+    `;
+}
+
+function changePage(page) {
+    currentPage = page;
+    loadProfiles(currentPage, currentFilters);
+}
+
+function applyFilters() {
+    currentFilters = {
+        gender: document.getElementById("filter-gender").value,
+        country: document.getElementById("filter-country").value,
+        age_group: document.getElementById("filter-age-group").value,
+        min_age: document.getElementById("filter-min-age").value,
+        max_age: document.getElementById("filter-max-age").value,
+        sort_by: document.getElementById("filter-sort").value,
+        order: document.getElementById("filter-order").value,
+    };
+    currentPage = 1;
+    loadProfiles(currentPage, currentFilters);
+}
+
+function resetFilters() {
+    document.getElementById("filter-gender").value = "";
+    document.getElementById("filter-country").value = "";
+    document.getElementById("filter-age-group").value = "";
+    document.getElementById("filter-min-age").value = "";
+    document.getElementById("filter-max-age").value = "";
+    document.getElementById("filter-sort").value = "";
+    document.getElementById("filter-order").value = "asc";
+    currentFilters = {};
+    currentPage = 1;
+    loadProfiles();
+}
+
+async function exportCSV() {
+    const params = new URLSearchParams({
+        format: "csv",
+        ...currentFilters
+    });
+
+    // Remove empty params
+    for (const [key, value] of [...params.entries()]) {
+        if (!value) params.delete(key);
+    }
+
+    window.location.href = `/api/profiles/export?${params}`;
+}
+
+// Load profiles on page load
+loadProfiles();
+</script>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Insighta Labs{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dashboard</h1>
+    <p>Overview of your profile intelligence data</p>
+</div>
+
+<div class="card-grid" id="metrics">
+    <div class="metric-card">
+        <div class="metric-value" id="total-profiles">—</div>
+        <div class="metric-label">Total Profiles</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value" id="male-profiles">—</div>
+        <div class="metric-label">Male Profiles</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value" id="female-profiles">—</div>
+        <div class="metric-label">Female Profiles</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2 style="margin-bottom: 16px; font-size: 18px;">Recent Profiles</h2>
+    <div id="recent-profiles">
+        <div class="loading">Loading...</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadDashboard() {
+    try {
+        // Fetch all profiles to get metrics
+        const response = await fetch("/api/profiles?page=1&limit=5");
+        const data = await response.json();
+
+        if (response.status === 401) {
+            window.location.href = "/login";
+            return;
+        }
+
+        // Update metrics
+        document.getElementById("total-profiles").textContent = data.total || 0;
+
+        // Fetch male profiles count
+        const maleRes = await fetch("/api/profiles?gender=male&limit=1");
+        const maleData = await maleRes.json();
+        document.getElementById("male-profiles").textContent = maleData.total || 0;
+
+        // Fetch female profiles count
+        const femaleRes = await fetch("/api/profiles?gender=female&limit=1");
+        const femaleData = await femaleRes.json();
+        document.getElementById("female-profiles").textContent = femaleData.total || 0;
+
+        // Render recent profiles table
+        const container = document.getElementById("recent-profiles");
+
+        if (!data.data || data.data.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <h3>No profiles yet</h3>
+                    <p>Create your first profile to get started</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Gender</th>
+                        <th>Age</th>
+                        <th>Country</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.data.map(profile => `
+                        <tr onclick="window.location.href='/profiles/${profile.id}'">
+                            <td>${profile.name}</td>
+                            <td>
+                                <span class="badge badge-${profile.gender}">
+                                    ${profile.gender || '—'}
+                                </span>
+                            </td>
+                            <td>${profile.age || '—'}</td>
+                            <td>${profile.country_id || '—'}</td>
+                            <td>${new Date(profile.created_at).toLocaleDateString()}</td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+        `;
+
+    } catch (error) {
+        console.error("Failed to load dashboard:", error);
+    }
+}
+
+// loadDashboard();
+</script>
+{% endblock %}

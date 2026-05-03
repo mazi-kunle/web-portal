@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Search — Insighta Labs{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Search Profiles</h1>
+    <p>Search using natural language</p>
+</div>
+
+<!-- Search Bar -->
+<div class="search-bar">
+    <input
+        type="text"
+        class="search-input"
+        id="search-input"
+        placeholder='Try "young males from nigeria" or "adults over 30"'
+        onkeydown="handleKeyDown(event)"
+    />
+    <button class="btn btn-primary" onclick="search()">Search</button>
+</div>
+
+<!-- Results -->
+<div id="search-results"></div>
+
+<!-- Pagination -->
+<div class="pagination" id="pagination"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPage = 1;
+let currentQuery = "";
+
+function handleKeyDown(event) {
+    if (event.key === "Enter") {
+        search();
+    }
+}
+
+async function search(page = 1) {
+    const query = document.getElementById("search-input").value.trim();
+
+    if (!query) return;
+
+    currentQuery = query;
+    currentPage = page;
+
+    const container = document.getElementById("search-results");
+    container.innerHTML = '<div class="loading">Searching...</div>';
+
+    const params = new URLSearchParams({
+        q: query,
+        page,
+        limit: 10
+    });
+
+    try {
+        const response = await fetch(`/api/profiles/search?${params}`);
+        const data = await response.json();
+
+        if (response.status === 401) {
+            window.location.href = "/login";
+            return;
+        }
+
+        if (response.status === 422) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <h3>Could not understand query</h3>
+                    <p>Try something like "young males from nigeria"</p>
+                </div>
+            `;
+            document.getElementById("pagination").innerHTML = "";
+            return;
+        }
+
+        if (!data.data || data.data.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <h3>No results found</h3>
+                    <p>Try a different search query</p>
+                </div>
+            `;
+            document.getElementById("pagination").innerHTML = "";
+            return;
+        }
+
+        // Render results table
+        container.innerHTML = `
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Gender</th>
+                            <th>Age</th>
+                            <th>Age Group</th>
+                            <th>Country</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.data.map(profile => `
+                            <tr onclick="window.location.href='/profiles/${profile.id}'">
+                                <td>${profile.name}</td>
+                                <td>
+                                    <span class="badge badge-${profile.gender}">
+                                        ${profile.gender || '—'}
+                                    </span>
+                                </td>
+                                <td>${profile.age || '—'}</td>
+                                <td>${profile.age_group || '—'}</td>
+                                <td>${profile.country_id || '—'}</td>
+                                <td>${new Date(profile.created_at).toLocaleDateString()}</td>
+                            </tr>
+                        `).join("")}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        // Render pagination
+        renderPagination(data.page, data.total_pages, data.total);
+
+    } catch (error) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>Search failed</h3>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function renderPagination(page, totalPages, total) {
+    const container = document.getElementById("pagination");
+
+    if (totalPages <= 1) {
+        container.innerHTML = "";
+        return;
+    }
+
+    container.innerHTML = `
+        <button
+            onclick="search(${page - 1})"
+            ${page <= 1 ? "disabled" : ""}
+        >
+            Previous
+        </button>
+
+        <span class="page-info">
+            Page ${page} of ${totalPages} (${total} total)
+        </span>
+
+        <button
+            onclick="search(${page + 1})"
+            ${page >= totalPages ? "disabled" : ""}
+        >
+            Next
+        </button>
+    `;
+}
+</script>
+{% endblock %}

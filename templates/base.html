@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Insighta Labs{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    {% if request.endpoint not in ['login'] %}
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span>⚡ Insighta Labs</span>
+        </div>
+        <div class="nav-links">
+            <a href="{{ url_for('dashboard') }}" 
+               class="{% if request.endpoint == 'dashboard' %}active{% endif %}">
+                Dashboard
+            </a>
+            <a href="{{ url_for('profiles') }}"
+               class="{% if request.endpoint == 'profiles' %}active{% endif %}">
+                Profiles
+            </a>
+            <a href="{{ url_for('search') }}"
+               class="{% if request.endpoint == 'search' %}active{% endif %}">
+                Search
+            </a>
+            <a href="{{ url_for('account') }}"
+               class="{% if request.endpoint == 'account' %}active{% endif %}">
+                Account
+            </a>
+            <a href="{{ url_for('logout') }}" class="btn-logout">
+                Logout
+            </a>
+        </div>
+    </nav>
+    {% endif %}
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

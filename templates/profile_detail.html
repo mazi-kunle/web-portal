@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Profile Detail — Insighta Labs{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <a href="/profiles" style="color: #94a3b8; font-size: 14px;">
+        ← Back to Profiles
+    </a>
+    <h1 id="profile-name" style="margin-top: 8px;">Loading...</h1>
+</div>
+
+<div id="profile-container">
+    <div class="loading">Loading...</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const profileId = "{{ profile_id }}";
+
+async function loadProfile() {
+    const container = document.getElementById("profile-container");
+
+    try {
+        const response = await fetch(`/api/profiles/${profileId}`);
+        const data = await response.json();
+
+        if (response.status === 401) {
+            window.location.href = "/login";
+            return;
+        }
+
+        if (response.status === 404) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <h3>Profile not found</h3>
+                    <p>This profile does not exist or has been deleted</p>
+                </div>
+            `;
+            return;
+        }
+
+        const profile = data.data;
+
+        // Update page title
+        document.getElementById("profile-name").textContent = profile.name;
+        document.title = `${profile.name} — Insighta Labs`;
+
+        // Render profile detail
+        container.innerHTML = `
+            <div class="card">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+
+                    <div>
+                        <h2 style="font-size: 16px; color: #94a3b8; margin-bottom: 16px;">
+                            Personal Info
+                        </h2>
+                        <table style="width: 100%;">
+                            <tbody>
+                                ${renderRow("ID", profile.id)}
+                                ${renderRow("Name", profile.name)}
+                                ${renderRow("Gender", `
+                                    <span class="badge badge-${profile.gender}">
+                                        ${profile.gender || '—'}
+                                    </span>
+                                `)}
+                                ${renderRow("Gender Probability", formatProbability(profile.gender_probability))}
+                                ${renderRow("Age", profile.age || '—')}
+                                ${renderRow("Age Group", profile.age_group || '—')}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div>
+                        <h2 style="font-size: 16px; color: #94a3b8; margin-bottom: 16px;">
+                            Location Info
+                        </h2>
+                        <table style="width: 100%;">
+                            <tbody>
+                                ${renderRow("Country ID", profile.country_id || '—')}
+                                ${renderRow("Country Name", profile.country_name || '—')}
+                                ${renderRow("Country Probability", formatProbability(profile.country_probability))}
+                                ${renderRow("Created At", new Date(profile.created_at).toLocaleString())}
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+        `;
+
+    } catch (error) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>Failed to load profile</h3>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function renderRow(label, value) {
+    return `
+        <tr>
+            <td style="color: #94a3b8; font-size: 13px; padding: 10px 0; width: 40%;">
+                ${label}
+            </td>
+            <td style="font-size: 14px; padding: 10px 0;">
+                ${value}
+            </td>
+        </tr>
+    `;
+}
+
+function formatProbability(value) {
+    if (!value) return '—';
+    return `${(value * 100).toFixed(1)}%`;
+}
+
+loadProfile();
+</script>
+{% endblock %}
